@@ -1,43 +1,43 @@
 import FS from 'fs-extra';
 import path from 'path';
-import { getUserData, sleep } from './utils';
-import { SearchUsersResponseData } from '@octokit/types';
-import { UsersDataBase } from './common/props';
+import { getUserData, sleep } from './utils/index.js';
+import { UsersDataBase } from './common/props.js';
+
+function uniqueAndRank(users: UsersDataBase[]) {
+  const obj: Record<string, boolean> = {};
+  const result = users.reduce<UsersDataBase[]>((item, next) => {
+    obj[next.login] ? '' : (obj[next.login] = true) && item.push(next);
+    return item;
+  }, []);
+
+  return result.map((item: UsersDataBase, idx: number) => {
+    item.rank = idx + 1;
+    return item;
+  });
+}
 
 (async () => {
   try {
     let users: UsersDataBase[] = [];
-    let data = await getUserData(1, true);
-    users = users.concat(data);
-    console.log(`-> 获取到第1页，中国用户共${data.length}条数据！`);
-    await sleep(1000);
+    for (let page = 1; page <= 8; page += 1) {
+      const data = await getUserData(page, true);
+      users = users.concat(data);
+      console.log(`-> 获取到第${page}页，中国用户共\x1b[32;1m${data.length}\x1b[0m条数据！`);
 
-    data = await getUserData(2, true);
-    users = users.concat(data);
-    console.log(`-> 获取到第2页，中国用户共${data.length}条数据！`);
-    await sleep(1000);
+      const result = uniqueAndRank(users);
+      FS.outputFileSync(path.join(process.cwd(), '.cache', 'users.china.json'), JSON.stringify(result, null, 2));
 
-    data = await getUserData(3, true);
-    users = users.concat(data);
-    console.log(`-> 获取到第3页，中国用户共${data.length}条数据！`);
-    await sleep(1000);
+      if (data.length === 0) {
+        console.log(`-> 第${page}页为空，提前停止抓取。`);
+        break;
+      }
+      await sleep(1000);
+    }
 
-    data = await getUserData(4, true);
-    users = users.concat(data);
-    console.log(`-> 获取到第4页，中国用户共${data.length}条数据！`);
-    await sleep(1000);
+    const result = uniqueAndRank(users);
 
-    data = await getUserData(5, true);
-    users = users.concat(data);
-    console.log(`-> 获取到第5页，中国用户共${data.length}条数据！`);
-
-    users = users.map((item: UsersDataBase, idx: number) => {
-      item.rank = idx + 1;
-      return item;
-    }).slice(0, 500);
-
-    FS.outputFileSync(path.join(process.cwd(), '.cache', 'users.china.json'), JSON.stringify(users, null, 2));
-    console.log(`-> 共获取${users.length}条用户数据！`);
+    FS.outputFileSync(path.join(process.cwd(), '.cache', 'users.china.json'), JSON.stringify(result, null, 2));
+    console.log(`-> 共获取\x1b[32;1m${result.length}\x1b[0m条用户数据！`);
   } catch (error) {
     console.log(error);
   }

@@ -28,32 +28,42 @@
       --color-link-hover: #58a6ff;
       --color-tab-fg: #e2e2e2;
       --color-border: #000;
-      --color-neutral-muted: rgba(175,184,193,0.2);
+      --color-neutral-muted: rgba(165,171,177,0.2);
     }
   </style>
   <style>
     * { box-sizing: border-box; }
     html, body, ul, li, h1 { margin: 0; padding: 0 }
     html, body { font-size: 16px; font-family: -apple-system,"Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","WenQuanYi Micro Hei","Microsoft Yahei",sans-serif; }
+    body { padding: 0 12px; }
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background-color: var(--bg-secondary);
+      border-radius: 12px;
+      border: 1px solid var(--color-neutral-muted);
+    }
     ul { list-style: none; }
-
     a { color: var(--color-accent-fg); text-decoration: none; transition: all .2s ease-in; }
     a:hover { color: var(--color-link-hover); text-decoration: underline; }
     a.github-corner:hover .octo-arm { animation: octocat-wave 560ms infinite linear; }
     a.github-corner svg { fill: #f1f1f1; color: #000; position: absolute; top: 0; border: 0; right: 0; z-index: 99; width: 70px; height: 70px; }
     a.github-corner { position: fixed; z-index: 9999; top: 0; right: 0; }
 
-    .title { padding: 32px 20px 10px 20px; font-size: 32px; display: flex; }
+    .title { padding: 5rem 20px 10px 20px; font-size: 32px; text-align: center; }
     .title a svg { display: block; }
     .title a { color: var(--color-accent-fg); display: inline-block; margin-left: 10px; }
+    .title dark-mode { margin-right: 8px; }
+    .time { text-align: center; }
     .time, .footer { padding: 5px 20px 2px 20px; font-size: 12px; color: #adadad; }
-    .tabs { padding: 0 20px 5px 20px;}
+    .tabs { padding: 1rem 20px 3rem 20px; text-align: center;}
     .tabs a { background: var(--color-tab-fg); display: inline-block; border-radius: 2px; margin: 2px 0; padding: 2px 5px; font-size: 12px; line-height: 16px; color: var(--color-accent-fg); }
     .tabs a.active { background: #333; color: #efefef; }
     .tabs a:hover:not(.active) { background: #efefef; }
-    .footer { padding: 0 20px 30px 20px; font-size: 12px; color: #adadad; }
-    .footer .time { padding: 0; }
-    .list { text-align: left; padding-bottom: 10px; margin: 0 15px; }
+    .footer { padding: 2rem 20px 6rem 20px; font-size: 12px; color: #adadad; text-align: center; }
+    .footer .time { padding: 0; text-align: center; }
+    .list { text-align: left; padding: 16px;}
     .list img { width: 36px; height: 36px; border-radius: 3px; display: block; margin: 0 auto; background-color: #e2e2e2; border: 0; overflow: hidden; }
     .list li { padding: 10px; transition: all .3s; }
     .list li.rank-title { margin: 0; padding: 3px 0 0 7px; margin-bottom: 10px; border-radius: 5px; font-size: 12px; line-height: 16px; }
@@ -90,12 +100,12 @@
     .list li span.star { height: 18px; background: var(--color-neutral-muted); display: inline-block; padding: 2px 4px; border-radius: 3px; }
   </style>
   <% } %>
-  <% if (/(toutiao|users|sifou|trending)/.test(tabCls)) { %>
+  <% if (/(users|trending)/.test(tabCls)) { %>
   <style>
     .list .select .active { color: var(--color-theme-text); font-weight: bold; border-bottom: 1px dotted var(--color-border);}
   </style>
   <% } %>
-  <% if (/(toutiao|users|repos|trending)/.test(tabCls)) { %>
+  <% if (/(users|repos|trending)/.test(tabCls)) { %>
   <style>
     .list li div.followers { font-size: 12px; color: var(--color-fg-muted); white-space:nowrap; padding-top: 2px; border-radius: 3px; }
     .list li div.followers a { color: var(--color-fg-muted); }
@@ -112,7 +122,85 @@
   <% } %>
   <% if (tabCls === 'users') { %>
   <style>
+    .td-unknow{
+      color:#999;
+    }
     .list li.death > div { opacity: 1; filter: grayscale(100%); }
+    .userlist {
+      font-size: 14px;
+      padding: 16px;
+    }
+    .userlist .select {
+      padding-bottom: 1rem;
+      display: inline-flex;
+      gap: 6px;
+    }
+    .userlist .select .active { color: var(--color-theme-text); font-weight: bold; border-bottom: 1px dotted var(--color-border);}
+    .userlist thead {
+      position:sticky;
+      top: 0;
+    }
+    .userlist thead th {
+      background-color: var(--color-tab-fg);
+      text-align: left;
+      padding: 3px 8px;
+      line-height: 20px;
+      white-space: pre;
+    }
+    .userlist tbody tr:hover {
+      background-color: var(--color-neutral-muted);
+    }
+    .userlist tbody tr td img {
+      display: block;
+      background-color: var(--color-neutral-muted);
+      border-radius: 6px;
+    }
+    .userlist tbody tr td {
+      padding: 5px;
+      line-height: 14px;
+    }
+    .userlist tbody tr td:nth-child(2) span {
+      display: block;
+      color: var(--color-fg-subtle);
+    }
+    .userlist tbody tr td:first-child {
+      text-align: center;
+      font-weight: bold;
+    }
+    .userlist tbody tr td svg {
+      display: inline-flex;
+      top: 1px;
+      position: relative;
+      color: var(--color-accent-emphasis);
+    }
+    .userlist tbody tr td svg:hover {
+      color:  var(--color-accent-emphasis);
+      animation: blink 0.5s infinite;
+    }
+    @keyframes blink {
+      0% { opacity: 1; }
+      25% { opacity: 0; }
+      50% { opacity: 1; }
+      75% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    @media only screen and (max-width: 988px) {
+      .userlist table :is(td:nth-child(3), td:nth-child(4), th:nth-child(3), th:nth-child(4)) {
+        display: none;
+      }
+    }
+
+    @media only screen and (max-width: 580px) {
+      .userlist table :is(td:nth-child(3), td:nth-child(4), td:nth-child(8), th:nth-child(3), th:nth-child(4), th:nth-child(8)) {
+        display: none;
+      }
+    }
+    @media only screen and (max-width: 430px) {
+      .userlist table :is(td:nth-child(3), td:nth-child(4), td:nth-child(6), td:nth-child(7), td:nth-child(8), th:nth-child(3), th:nth-child(4), th:nth-child(6), th:nth-child(7), th:nth-child(8)) {
+        display: none;
+      }
+    }
   </style>
   <% } %>
   <script src="https://unpkg.com/@wcj/dark-mode"></script>
@@ -143,47 +231,29 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 16 16" version="1.1" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>
     </a>
     <% } %>
-    <% if (tabCls === 'sifou') { %>
-    <a target="_blank" href="https://segmentfault.com/hottest">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 16 16" version="1.1" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>
-    </a>
-    <% } %>
-    <% if (tabCls === 'toutiao') { %>
-    <a target="_blank" href="https://toutiao.io/posts/hot/7">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 16 16" version="1.1" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>
-    </a>
-    <% } %>
-    <% if (tabCls === '36kr') { %>
-    <a target="_blank" href="https://36kr.com/newsflashes">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" viewBox="0 0 16 16" version="1.1" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>
-    </a>
-    <% } %>
   </h1>
-  <div class="time">Last cache created on <%=date%> by 
+  <div class="time">Last cache created on <%=`${new Date().getFullYear()}/${(new Date().getMonth()) + 1}/${new Date().getDate()}`%> by 
     <% if (tabCls === 'users') { %>
-      <a href="<%= type === 'global' ? 'https://github.com/search?q=followers%3A%3E1000&type=Users' : 'https://github.com/search?q=location%3AChina+followers%3A%3E1000&type=Users' %>">Github API v3</a>
+      <% if (type === 'global') { %>
+        <a href="https://github.com/search?q=followers%3A%3E1000&type=Users">Github API v3</a>.
+      <% } %>
+      <% if (type === 'org') { %>
+        <a href="https://github.com/search?q=location%3AChina+followers%3A%3E1000&type=Organization">Github API v3</a>.
+      <% } %>
+      <% if (type === 'china') { %>
+        <a href="https://github.com/search?q=location%3AChina+followers%3A%3E1000&type=Users">Github API v3</a>.
+      <% } %>
     <% } %>
     <% if (tabCls === 'repos') { %>
-      <a href="https://github.com/search?q=stars%3A%3E8000&type=Repositories">Github API v3</a>
+      <a href="https://github.com/search?q=stars%3A%3E8000&type=Repositories">Github API v3</a>.
     <% } %>
     <% if (tabCls === 'trending') { %>
-      <a href="https://github.com/trending">Github Trending</a>
-    <% } %>
-    <% if (tabCls === 'sifou') { %>
-      <a href="https://segmentfault.com/hottest">SegmentFault</a>
-    <% } %>
-    <% if (tabCls === 'toutiao') { %>
-      <a href="https://toutiao.io/posts/hot/7">TouTiao</a>
-    <% } %>
-    <% if (tabCls === '36kr') { %>
-      <a href="https://36kr.com/newsflashes">36kr</a>
-    <% } %>.
+      <a href="https://github.com/trending">Github Trending</a>.
+    <% } %> Created by <a href="https://jaywcjlove.github.io/#/sponsor" target="_blank">小弟调调™</a>.
   </div>
   <div class="tabs">
     <a class="<%= tabCls === 'users' ? 'active': '' %>" href="index.html">Users</a>
     <a class="<%= tabCls === 'repos' ? 'active': '' %>" href="repos.html">Repos</a>
     <a class="<%= tabCls === 'trending' ? 'active': '' %>" href="trending.html">Trending</a>
-    <a class="<%= tabCls === 'sifou' ? 'active': '' %>" href="sifou-daily.html">Sifou</a>
-    <a class="<%= tabCls === 'toutiao' ? 'active': '' %>" href="toutiao-7.html">开发头条</a>
-    <a class="<%= tabCls === '36kr' ? 'active': '' %>" href="36kr.html">36Kr</a>
   </div>
+  <main>

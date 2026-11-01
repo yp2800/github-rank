@@ -1,51 +1,142 @@
 name: Build & Deploy
 on:
   push:
-    # branches:
-    #   - master
     tags:
-      - v*
+      - 'v*'  # 监听所有以 v 开头的标签
   schedule:
-    - cron:  '0 0 * * *'
+    # 每天 5:30 和 17:30 UTC 触发工作流程
+    #- cron:  '30 5 * * *'
+    # 每月的第 15 天凌晨 3 点执行
+    #- cron: "0 3 15 * *"
+    # 每隔 7 天执行
+    - cron: "0 0 */7 * *"
+
 jobs:
   build-deploy:
-    runs-on: ubuntu-18.04
+    env: 
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-node@v2
-      with:
-        node-version: 14
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
 
-    - run: npm install
+      - run: npm install
 
-    - name: Modify Version
-      shell: bash
-      run: |
-        node -e 'var pkg = require("./package.json"); pkg.version= (new Date().getFullYear().toString().substr(2)) + "." + (new Date().getMonth() + 1) + "." + (new Date().getDate()); require("fs").writeFileSync("./package.json", JSON.stringify(pkg, null, 2))'
+      - name: Modify Version(Date)
+        shell: bash
+        run: |
+          node -e 'var pkg = require("./package.json"); pkg.version= (new Date().getFullYear().toString().substr(2)) + "." + (new Date().getMonth() + 1) + "." + (new Date().getDate()); require("fs").writeFileSync("./package.json", JSON.stringify(pkg, null, 2))'
 
-    - run: npm run get:o
-      env: 
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        ID: ${{ secrets.GITHUB_ID }}
-        SECRET: ${{ secrets.GITHUB_SECRET }}
+      - run: npm run get:trending
+      - run: npm run get:repos
+      - run: npm run get:users
+      - run: npm run get:users:china
+      - run: cat .cache/users.json
+      - run: cat .cache/users.china.json
+      - run: npm run get:users:info
 
-    - run: npm run get
-      env: 
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        ID: ${{ secrets.GITHUB_ID }}
-        SECRET: ${{ secrets.GITHUB_SECRET }}
+      - run: npm run start
+      - run: mkdir -p web/data
+      - run: cp -rf dist/* web/data
 
-    - run: npm run start
-    - run: mkdir -p web/data
-    - run: cp -rf dist/* web/data
+      - name: Generate Contributors Images
+        uses: jaywcjlove/github-action-contributors@main
+        with:
+          filter-author: (renovate\[bot\]|renovate-bot|dependabot\[bot\])
+          output: web/CONTRIBUTORS.svg
+          avatarSize: 42
 
-    - name: Deploy
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./web
-        user_name: github-actions[bot]
-        user_email: github-actions[bot]@users.noreply.github.com
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
 
-    - run: npm install @jsdevtools/npm-publish -g
-    - run: npm-publish --token="${{ secrets.NPM_TOKEN }}" ./package.json
+      - name: Modify README.md
+        uses: jaywcjlove/github-action-modify-file-content@main
+        with:
+          path: README.md
+          body: "{{date:YYYY-MM-DD HH:mm:ss}}"
+          branch: master
+      
+      # node@v24.0.0+ 
+      # https://gist.github.com/jaywcjlove/a178278521a6f72c74525d3f1d9c4bf9
+      - name: 📦 @wcj/github-rank to NPM
+        run: NODE_AUTH_TOKEN="" npm publish --access public --provenance
+        continue-on-error: true
+
+      - name: Ensure Tag Exists
+        continue-on-error: true
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          echo "TAG=${TAG}" >> "$GITHUB_ENV"
+          git fetch --tags --quiet
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists."
+          else
+            git tag -a "${TAG}" -m "release: ${TAG}"
+            git push origin "${TAG}"
+            echo "Created and pushed tag ${TAG}."
+          fi
+
+      - name: Ensure Release Exists
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists."
+          else
+            gh release create "${TAG}" \
+              --title "${TAG}" \
+              --notes "Automated release for ${TAG}."
+            echo "Created release ${TAG}."
+          fi
+
+      - name: Commit package.json Version
+        continue-on-error: true
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- package.json; then
+            echo "package.json has no changes to commit."
+            exit 0
+          fi
+          VERSION=$(node -p "require('./package.json').version")
+          git add package.json
+          git commit -m "chore(release): bump version to ${VERSION}"
+          ORIG_COMMIT=$(git rev-parse HEAD)
+          git stash push --include-untracked -m "ci-temp-before-rebase" || true
+          for i in 1 2 3; do
+            echo "Push attempt ${i}: rebase onto origin/master then push"
+            git reset --hard "${ORIG_COMMIT}"
+            git fetch origin master
+            if ! git rebase origin/master; then
+              git rebase --abort || true
+              sleep 2
+              continue
+            fi
+            if git push origin HEAD:master; then
+              echo "package.json version bump pushed successfully."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Failed to push package.json version bump after retries."
+          exit 1
